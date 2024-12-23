@@ -13,6 +13,16 @@ def set_figsize(figsize=(3.5, 2.5)):
     use_svg_display()
     plt.rcParams['figure.figsize'] = figsize
 
+def semilogy(x_vals, y_vals, x_label, y_label, x2_vals=None, y2_vals=None,
+             legend=None, figsize=(3.5, 2.5)):
+    set_figsize(figsize)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.semilogy(x_vals, y_vals)
+    if x2_vals and y2_vals:
+        plt.semilogy(x2_vals, y2_vals, linestyle=':')
+        plt.legend(legend)
+
 def data_iter(batch_size, features, labels):
     num_examples = len(features)
     indices = list(range(num_examples))
@@ -56,11 +66,20 @@ def load_data_fashion_mnist(batch_size, resize=None, root='../Datasets/FashionMN
     return train_iter, test_iter
 
 def evaluate_accuracy(data_iter, net):
-    acc_num, n = 0.0, 0
+    acc_sum, n = 0.0, 0
     for X, y in data_iter:
-        acc_num += (net(X).argmax(dim=1) == y).float().sum().item()
+        if isinstance(net, torch.nn.Module):
+            net.eval() # 评估模式, 这会关闭dropout
+            acc_sum += (net(X).argmax(dim=1) == y).float().sum().item()
+            net.train() # 改回训练模式
+        else: # 自定义的模型
+            if('is_training' in net.__code__.co_varnames): # 如果有is_training这个参数
+                # 将is_training设置成False
+                acc_sum += (net(X, is_training=False).argmax(dim=1) == y).float().sum().item() 
+            else:
+                acc_sum += (net(X).argmax(dim=1) == y).float().sum().item() 
         n += y.shape[0]
-    return acc_num / n
+    return acc_sum / n
         
 
 ######################################################
